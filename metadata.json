@@ -1,0 +1,5 @@
+{
+  "name": "Ninja Store Calculator",
+  "description": "A sophisticated pricing calculator for importers to determine sales prices, profit margins, and credit card installment breakdowns based on custom fees.",
+  "requestFramePermissions": []
+}
