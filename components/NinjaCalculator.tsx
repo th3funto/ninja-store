@@ -5,7 +5,8 @@ import {
   Package, 
   Info,
   Copy,
-  Check
+  Check,
+  Wand2
 } from 'lucide-react';
 import InputGroup from './InputGroup';
 import InstallmentTable from './InstallmentTable';
@@ -22,6 +23,7 @@ const NinjaCalculator: React.FC = () => {
   const [salesTax, setSalesTax] = useState<string>(DEFAULT_SALES_TAX.toString());
   const [cardProfile, setCardProfile] = useState<'visaMaster' | 'eloAmex'>('visaMaster');
   const [copied, setCopied] = useState(false);
+  const [smartRounding, setSmartRounding] = useState(true);
   
   const [result, setResult] = useState<CalculationResult>({
     baseCostBrl: 0,
@@ -48,22 +50,33 @@ const NinjaCalculator: React.FC = () => {
     // 3. Total Cost to acquire
     const totalCost = baseCostBrl + importFeeValue;
 
-    // 4. Calculate Sales Margin (Profit)
-    // Assuming sales tax/margin is added to the Total Cost
-    const profitValue = totalCost * (sTax / 100);
+    // 4. Calculate Initial Target Profit
+    let targetProfit = totalCost * (sTax / 100);
 
-    // 5. Final Selling Price (Cash Base)
-    const finalCashPrice = totalCost + profitValue;
+    // 5. Calculate Raw Final Price
+    let finalCashPrice = totalCost + targetProfit;
+
+    // 6. Apply Smart Rounding (Optional)
+    if (smartRounding) {
+      // Rounds to nearest 5 (e.g., 4704 -> 4705, 4706 -> 4705, 4708 -> 4710)
+      // To force "cleaner" looks like the user example (4704 -> 4700), standard rounding to 5 is usually safest
+      // but if we wanted strictly 4704 -> 4700 we'd need round to 10. 
+      // Based on "de 5 em 5", we use this:
+      finalCashPrice = Math.round(finalCashPrice / 5) * 5;
+
+      // Reverse calculate profit so the math (Cost + Profit = Price) stays true
+      targetProfit = finalCashPrice - totalCost;
+    }
 
     setResult({
       baseCostBrl,
       importFeeValue,
       totalCost,
-      profitValue,
+      profitValue: targetProfit,
       finalCashPrice
     });
 
-  }, [usdPrice, exchangeRate, importTax, salesTax]);
+  }, [usdPrice, exchangeRate, importTax, salesTax, smartRounding]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -227,16 +240,42 @@ R$: ${fmtPrice(result.finalCashPrice)} a vista.
                 <span className="font-mono text-ninja-text font-bold">{formatCurrency(result.totalCost)}</span>
               </div>
                <div className="flex justify-between items-center text-sm">
-                <span className="text-emerald-400">Margem ({salesTax}%)</span>
+                <span className="text-emerald-400">Margem (aprox. {salesTax}%)</span>
                 <span className="font-mono text-emerald-400">+ {formatCurrency(result.profitValue)}</span>
               </div>
             </div>
 
             <div className="mt-6 pt-4 border-t border-ninja-border">
-              <label className="text-xs text-ninja-muted uppercase font-bold tracking-widest block mb-2">
-                Preço Final (À Vista)
-              </label>
-              <div className="bg-ninja-dark rounded-lg p-4 border border-ninja-border/50 text-center shadow-inner">
+              <div className="flex justify-between items-end mb-2">
+                <label className="text-xs text-ninja-muted uppercase font-bold tracking-widest block">
+                  Preço Final (À Vista)
+                </label>
+                
+                {/* Smart Rounding Toggle */}
+                <button 
+                  onClick={() => setSmartRounding(!smartRounding)}
+                  className={`text-xs flex items-center gap-1.5 px-2 py-1 rounded transition-all border ${
+                    smartRounding 
+                      ? 'bg-purple-500/10 border-purple-500/30 text-purple-300' 
+                      : 'bg-ninja-dark border-ninja-border text-ninja-muted hover:border-ninja-muted'
+                  }`}
+                  title="Arredonda o valor final para múltiplos de 5 (ex: R$105,00)"
+                >
+                  <Wand2 className="w-3 h-3" />
+                  {smartRounding ? 'Arredondado' : 'Exato'}
+                </button>
+              </div>
+
+              <div className="bg-ninja-dark rounded-lg p-4 border border-ninja-border/50 text-center shadow-inner relative overflow-hidden group">
+                 {/* Visual indicator for rounding */}
+                 {smartRounding && (
+                   <div className="absolute top-1 right-1">
+                     <span className="flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                      </span>
+                   </div>
+                 )}
                 <span className="text-3xl font-bold text-white tracking-tight">
                   {formatCurrency(result.finalCashPrice)}
                 </span>
