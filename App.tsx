@@ -8,7 +8,7 @@ const App: React.FC = () => {
        <NinjaCalculator />
        
        <footer className="max-w-6xl mx-auto px-4 text-center mt-12 text-ninja-muted text-xs">
-         <p>© {new Date().getFullYear()} Ninja Store System. Desenvolvido por Marcelo Tarouquela.</p>
+         <p>© {new Date().getFullYear()} Ninja Store System.</p>
        </footer>
     </div>
   );
