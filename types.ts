@@ -22,4 +22,5 @@ export interface CalculationResult {
   totalCost: number;
   profitValue: number;
   finalCashPrice: number;
+  rawCashPrice: number; // Valor exato antes do arredondamento
 }

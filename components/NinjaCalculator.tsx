@@ -6,7 +6,8 @@ import {
   Info,
   Copy,
   Check,
-  Wand2
+  Wand2,
+  ArrowRight
 } from 'lucide-react';
 import InputGroup from './InputGroup';
 import InstallmentTable from './InstallmentTable';
@@ -30,7 +31,8 @@ const NinjaCalculator: React.FC = () => {
     importFeeValue: 0,
     totalCost: 0,
     profitValue: 0,
-    finalCashPrice: 0
+    finalCashPrice: 0,
+    rawCashPrice: 0
   });
 
   // --- Logic ---
@@ -53,15 +55,13 @@ const NinjaCalculator: React.FC = () => {
     // 4. Calculate Initial Target Profit
     let targetProfit = totalCost * (sTax / 100);
 
-    // 5. Calculate Raw Final Price
-    let finalCashPrice = totalCost + targetProfit;
+    // 5. Calculate Raw Final Price (Exact Math)
+    const rawCashPrice = totalCost + targetProfit;
+    let finalCashPrice = rawCashPrice;
 
     // 6. Apply Smart Rounding (Optional)
     if (smartRounding) {
       // Rounds to nearest 5 (e.g., 4704 -> 4705, 4706 -> 4705, 4708 -> 4710)
-      // To force "cleaner" looks like the user example (4704 -> 4700), standard rounding to 5 is usually safest
-      // but if we wanted strictly 4704 -> 4700 we'd need round to 10. 
-      // Based on "de 5 em 5", we use this:
       finalCashPrice = Math.round(finalCashPrice / 5) * 5;
 
       // Reverse calculate profit so the math (Cost + Profit = Price) stays true
@@ -73,7 +73,8 @@ const NinjaCalculator: React.FC = () => {
       importFeeValue,
       totalCost,
       profitValue: targetProfit,
-      finalCashPrice
+      finalCashPrice,
+      rawCashPrice
     });
 
   }, [usdPrice, exchangeRate, importTax, salesTax, smartRounding]);
@@ -100,11 +101,6 @@ const NinjaCalculator: React.FC = () => {
     const fmtPrice = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     
     // Note: User requested format
-    // 📲Produto
-    // R$: 6.598 a vista.
-    // 💳6x R$125 | 10x R$748,88 | 12x R$632,31
-    // *juros por conta do comprador.
-
     const text = `📲${productName}
 R$: ${fmtPrice(result.finalCashPrice)} a vista.
 💳6x R$${fmtPrice(val6x)} | 10x R$${fmtPrice(val10x)} | 12x R$${fmtPrice(val12x)}
@@ -115,6 +111,9 @@ R$: ${fmtPrice(result.finalCashPrice)} a vista.
       setTimeout(() => setCopied(false), 2000);
     });
   };
+
+  // Helper to calculate rounding difference
+  const roundingDiff = result.finalCashPrice - result.rawCashPrice;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -259,7 +258,7 @@ R$: ${fmtPrice(result.finalCashPrice)} a vista.
                       ? 'bg-purple-500/10 border-purple-500/30 text-purple-300' 
                       : 'bg-ninja-dark border-ninja-border text-ninja-muted hover:border-ninja-muted'
                   }`}
-                  title="Arredonda o valor final para múltiplos de 5 (ex: R$105,00)"
+                  title="Arredonda o valor final para múltiplos de 5"
                 >
                   <Wand2 className="w-3 h-3" />
                   {smartRounding ? 'Arredondado' : 'Exato'}
@@ -267,15 +266,28 @@ R$: ${fmtPrice(result.finalCashPrice)} a vista.
               </div>
 
               <div className="bg-ninja-dark rounded-lg p-4 border border-ninja-border/50 text-center shadow-inner relative overflow-hidden group">
-                 {/* Visual indicator for rounding */}
+                 {/* Visual indicator for rounding logic */}
+                 {smartRounding && Math.abs(roundingDiff) > 0.001 && (
+                   <div className="flex items-center justify-center gap-2 mb-2 text-xs opacity-80">
+                     <span className="text-ninja-muted line-through decoration-rose-500/50" title="Valor Matemático">
+                       {formatCurrency(result.rawCashPrice)}
+                     </span>
+                     <ArrowRight className="w-3 h-3 text-ninja-muted" />
+                     <span className={`${roundingDiff > 0 ? 'text-emerald-400' : 'text-rose-400'} font-mono`}>
+                       {roundingDiff > 0 ? '+' : ''}{formatCurrency(roundingDiff)}
+                     </span>
+                   </div>
+                 )}
+
                  {smartRounding && (
-                   <div className="absolute top-1 right-1">
-                     <span className="flex h-2 w-2">
+                   <div className="absolute top-2 right-2">
+                     <span className="flex h-1.5 w-1.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-purple-500"></span>
                       </span>
                    </div>
                  )}
+                 
                 <span className="text-3xl font-bold text-white tracking-tight">
                   {formatCurrency(result.finalCashPrice)}
                 </span>
